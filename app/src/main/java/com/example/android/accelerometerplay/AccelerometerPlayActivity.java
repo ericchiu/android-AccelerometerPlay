@@ -35,6 +35,7 @@ import android.os.PowerManager.WakeLock;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.view.Display;
+import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.View;
 import android.view.ViewGroup;
@@ -144,6 +145,7 @@ public class AccelerometerPlayActivity extends Activity {
         private final int mDstWidth;
         private final int mDstHeight;
         private final ParticleSystem mParticleSystem;
+        Particle mCurrentParticle;
         private Sensor mAccelerometer;
         private long mLastT;
         private float mXDpi;
@@ -156,6 +158,7 @@ public class AccelerometerPlayActivity extends Activity {
         private float mSensorY;
         private float mHorizontalBound;
         private float mVerticalBound;
+        private boolean mTouching;
 
         public SimulationView(Context context) {
             super(context);
@@ -237,34 +240,70 @@ public class AccelerometerPlayActivity extends Activity {
         }
 
         @Override
+        public boolean onTouchEvent(MotionEvent event) {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    mTouching = true;
+                    mCurrentParticle = getParticle(event.getX(), event.getY());
+                    return true;
+                case MotionEvent.ACTION_MOVE:
+                    if (mCurrentParticle != null) {
+                        mCurrentParticle.setTranslationX(event.getX() - mDstWidth / 2);
+                        mCurrentParticle.setTranslationY(event.getY() - mDstHeight / 2);
+                        invalidate();
+                    }
+                    return true;
+            }
+            mTouching = false;
+            return super.onTouchEvent(event);
+        }
+
+        private Particle getParticle(float x, float y) {
+            final int count = mParticleSystem.getParticleCount();
+            for (int i = 0; i < count; i++) {
+                if (Math.abs(mParticleSystem.mBalls[i].getTranslationX() + mDstWidth / 2 - x) < mDstWidth / 2
+                        && Math.abs(mParticleSystem.mBalls[i].getTranslationY() + mDstHeight / 2 - y) < mDstHeight / 2) {
+                    return mParticleSystem.mBalls[i];
+                }
+            }
+            return null;
+        }
+
+        private boolean isTouchingParticle(int x, int y) {
+            return getParticle(x, y) != null;
+        }
+
+        @Override
         protected void onDraw(Canvas canvas) {
+            if (!mTouching) {
             /*
              * Compute the new position of our object, based on accelerometer
              * data and present time.
              */
-            final ParticleSystem particleSystem = mParticleSystem;
-            final long now = System.currentTimeMillis();
-            final float sx = mSensorX;
-            final float sy = mSensorY;
+                final ParticleSystem particleSystem = mParticleSystem;
+                final long now = System.currentTimeMillis();
+                final float sx = mSensorX;
+                final float sy = mSensorY;
 
-            particleSystem.update(sx, sy, now);
+                particleSystem.update(sx, sy, now);
 
-            final float xc = mXOrigin;
-            final float yc = mYOrigin;
-            final float xs = mMetersToPixelsX;
-            final float ys = mMetersToPixelsY;
-            final int count = particleSystem.getParticleCount();
-            for (int i = 0; i < count; i++) {
+                final float xc = mXOrigin;
+                final float yc = mYOrigin;
+                final float xs = mMetersToPixelsX;
+                final float ys = mMetersToPixelsY;
+                final int count = particleSystem.getParticleCount();
+                for (int i = 0; i < count; i++) {
                 /*
                  * We transform the canvas so that the coordinate system matches
                  * the sensors coordinate system with the origin in the center
                  * of the screen and the unit is the meter.
                  */
-                final float x = xc + particleSystem.getPosX(i) * xs;
-                final float y = yc - particleSystem.getPosY(i) * ys;
-                particleSystem.mBalls[i].setTranslationX(x);
-                particleSystem.mBalls[i].setTranslationY(y);
-                particleSystem.mBalls[i].setRotation(particleSystem.mBalls[i].mAngle);
+                    final float x = xc + particleSystem.getPosX(i) * xs;
+                    final float y = yc - particleSystem.getPosY(i) * ys;
+                    particleSystem.mBalls[i].setTranslationX(x); //TODO uncomment
+                    particleSystem.mBalls[i].setTranslationY(y);
+                    particleSystem.mBalls[i].setRotation(particleSystem.mBalls[i].mAngle);
+                }
             }
 
             // and make sure to redraw asap
