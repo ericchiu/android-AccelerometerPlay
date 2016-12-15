@@ -245,14 +245,24 @@ public class AccelerometerPlayActivity extends Activity {
                 case MotionEvent.ACTION_DOWN:
                     mTouching = true;
                     mCurrentParticle = getParticle(event.getX(), event.getY());
-                    return true;
+                    if (mCurrentParticle != null) {
+                        return true;
+                    }
                 case MotionEvent.ACTION_MOVE:
                     if (mCurrentParticle != null) {
-                        mCurrentParticle.setTranslationX(event.getX() - mDstWidth / 2);
-                        mCurrentParticle.setTranslationY(event.getY() - mDstHeight / 2);
+                        float x = event.getX() - mDstWidth / 2;
+                        float y = event.getY() - mDstHeight / 2;
+
+                        mCurrentParticle.mPosX = (x - mXOrigin) / mMetersToPixelsX;
+                        mCurrentParticle.mPosY = (mYOrigin - y) / mMetersToPixelsY;
+                        mCurrentParticle.mVelX = 0;
+                        mCurrentParticle.mVelY = 0;
+                        mLastT = 0;
+                        mCurrentParticle.setTranslationX(x);
+                        mCurrentParticle.setTranslationY(y);
                         invalidate();
+                        return true;
                     }
-                    return true;
             }
             mTouching = false;
             return super.onTouchEvent(event);
